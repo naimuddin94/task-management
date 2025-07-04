@@ -1,23 +1,30 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server";
 
-export function middleware(request: NextRequest) {
-  // This is a simple client-side auth check
-  // In a real app, you'd validate JWT tokens here
-  const { pathname } = request.nextUrl
+const AuthRoutes = ["/login", "/register"];
 
-  // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/signup", "/"]
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const token = request.cookies.get("accessToken")?.value;
 
-  if (publicRoutes.includes(pathname)) {
-    return NextResponse.next()
+  // If user is NOT logged in
+  if (!token) {
+    if (AuthRoutes.includes(pathname)) {
+      return NextResponse.next();
+    }
+
+    return NextResponse.redirect(
+      new URL(`/login?redirect=${pathname}`, request.url)
+    );
   }
 
-  // For protected routes, we'll let the client-side handle the redirect
-  // since we're using localStorage for demo purposes
-  return NextResponse.next()
+  // If user IS logged in
+  if (AuthRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
-}
+  matcher: ["/login", "/register", "/dashboard"],
+};
