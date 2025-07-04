@@ -1,31 +1,30 @@
-import status from 'http-status';
-import { AppError, Logger, sendOtpEmail } from '../../utils';
-import User from './user.model';
+import status from "http-status";
+import { AppError, Logger, sendOtpEmail } from "../../utils";
+import User from "./user.model";
 import {
   TChangePasswordPayload,
   TOtpPayload,
   TSigninPayload,
   TSignupPayload,
   TUpdatePayload,
-} from './user.validation';
-import { generateOtp, verifyToken } from '../../lib';
-import PendingUser from './pendingUser.model';
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
-import { IUser } from './user.interface';
-import { TSocialLoginPayload } from '../../types';
-import fs from 'fs';
-import { OTP_REASON } from './user.constant';
-import config from '../../config';
-import jwt from 'jsonwebtoken';
-import History from '../History/history.model';
+} from "./user.validation";
+import { generateOtp, verifyToken } from "../../lib";
+import PendingUser from "./pendingUser.model";
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import { IUser } from "./user.interface";
+import { TSocialLoginPayload } from "../../types";
+import fs from "fs";
+import { OTP_REASON } from "./user.constant";
+import config from "../../config";
+import jwt from "jsonwebtoken";
 
 const savePendingUserIntoDB = async (payload: TSignupPayload) => {
   const { email, password, fullName } = payload;
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
-    throw new AppError(status.BAD_REQUEST, 'Email already exists');
+    throw new AppError(status.BAD_REQUEST, "Email already exists");
   }
 
   const otp = generateOtp();
@@ -51,21 +50,21 @@ const verifyOtpAndSaveUserIntoDB = async (payload: TOtpPayload) => {
   const pendingUser = await PendingUser.findOne({ email: payload.email });
 
   if (!pendingUser) {
-    throw new AppError(status.NOT_FOUND, 'User not exists!');
+    throw new AppError(status.NOT_FOUND, "User not exists!");
   }
 
   if (!pendingUser?.otpExpiry) {
-    throw new AppError(status.BAD_REQUEST, 'Otp does not exists in DB');
+    throw new AppError(status.BAD_REQUEST, "Otp does not exists in DB");
   }
 
   if (pendingUser?.otp != payload.otp) {
-    throw new AppError(status.BAD_REQUEST, 'Invalid otp!');
+    throw new AppError(status.BAD_REQUEST, "Invalid otp!");
   }
 
   if (Date.now() > new Date(pendingUser.otpExpiry).getTime()) {
     throw new AppError(
       status.BAD_REQUEST,
-      'OTP has expired. Please request a new one.'
+      "OTP has expired. Please request a new one."
     );
   }
 
@@ -98,7 +97,7 @@ const verifyOtpAndSaveUserIntoDB = async (payload: TOtpPayload) => {
     await session.abortTransaction();
     throw new AppError(
       status.INTERNAL_SERVER_ERROR,
-      error?.message || 'Something went wrong creating new account'
+      error?.message || "Something went wrong creating new account"
     );
   } finally {
     await session.endSession();
@@ -109,7 +108,7 @@ const resendOtpAgain = async (email: string) => {
   const user = await PendingUser.findOne({ email });
 
   if (!user) {
-    throw new AppError(status.NOT_FOUND, 'Account not exists!');
+    throw new AppError(status.NOT_FOUND, "Account not exists!");
   }
 
   const otp = generateOtp();
@@ -124,7 +123,7 @@ const resendOtpAgain = async (email: string) => {
   if (!data) {
     throw new AppError(
       status.INTERNAL_SERVER_ERROR,
-      'Something went wrong save new otp into db'
+      "Something went wrong save new otp into db"
     );
   }
 
@@ -133,23 +132,23 @@ const resendOtpAgain = async (email: string) => {
 
 const signinIntoDB = async (payload: TSigninPayload) => {
   const { email, password } = payload;
-  const user = await User.findOne({ email }).select('+password');
+  const user = await User.findOne({ email }).select("+password");
 
   if (!user) {
-    throw new AppError(status.NOT_FOUND, 'User not exists!');
+    throw new AppError(status.NOT_FOUND, "User not exists!");
   }
 
   if (user.isSocialLogin || !user?.password) {
     throw new AppError(
       status.BAD_REQUEST,
-      'This account is registered via social login. Please sign in using your social account.'
+      "This account is registered via social login. Please sign in using your social account."
     );
   }
 
   const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
   if (!isPasswordCorrect) {
-    throw new AppError(status.UNAUTHORIZED, 'Invalid credentials');
+    throw new AppError(status.UNAUTHORIZED, "Invalid credentials");
   }
 
   const accessToken = user.generateAccessToken();
@@ -190,7 +189,7 @@ const socialLoginServices = async (payload: TSocialLoginPayload) => {
     if (!authRes) {
       throw new AppError(
         status.INTERNAL_SERVER_ERROR,
-        'Fail to create user into database'
+        "Fail to create user into database"
       );
     }
 
@@ -245,7 +244,7 @@ const updateProfileIntoDB = async (
 
   if (!auth) {
     if (newImagePath) await safeUnlink(newImagePath);
-    throw new AppError(status.NOT_FOUND, 'User not exists!');
+    throw new AppError(status.NOT_FOUND, "User not exists!");
   }
 
   if (newImagePath) {
@@ -255,7 +254,7 @@ const updateProfileIntoDB = async (
   try {
     const updatedUser = await User.findByIdAndUpdate(user._id, payload, {
       new: true,
-    }).select('-password');
+    }).select("-password");
 
     if (newImagePath && oldImagePath) {
       await safeUnlink(oldImagePath); // cleanup old image after successful update
@@ -264,7 +263,7 @@ const updateProfileIntoDB = async (
     return updatedUser;
   } catch (error) {
     if (newImagePath) await safeUnlink(newImagePath); // rollback new upload
-    Logger.error('Error updating profile:', error);
+    Logger.error("Error updating profile:", error);
     throw error;
   }
 };
@@ -283,16 +282,16 @@ const changePasswordIntoDB = async (
 ) => {
   const user = await User.findOne({
     _id: requestedUser._id,
-  }).select('+password');
+  }).select("+password");
 
   if (!user) {
-    throw new AppError(status.NOT_FOUND, 'User not exists!');
+    throw new AppError(status.NOT_FOUND, "User not exists!");
   }
 
   if (user.isSocialLogin || !user?.password) {
     throw new AppError(
       status.BAD_REQUEST,
-      'This account is registered via social login. You can not change your password.'
+      "This account is registered via social login. You can not change your password."
     );
   }
 
@@ -302,7 +301,7 @@ const changePasswordIntoDB = async (
   );
 
   if (!isCredentialsCorrect) {
-    throw new AppError(status.UNAUTHORIZED, 'Current password is not correct');
+    throw new AppError(status.UNAUTHORIZED, "Current password is not correct");
   }
 
   const hashPassword = await bcrypt.hash(
@@ -322,11 +321,11 @@ const forgotPassword = async (email: string) => {
   });
 
   if (!user) {
-    throw new AppError(status.NOT_FOUND, 'User not exists!');
+    throw new AppError(status.NOT_FOUND, "User not exists!");
   }
 
   const otp = generateOtp();
-  await sendOtpEmail(email, otp, user.fullName || 'Guest');
+  await sendOtpEmail(email, otp, user.fullName || "Guest");
 
   const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -358,17 +357,17 @@ const verifyOtpForForgetPassword = async (payload: {
   });
 
   if (!user) {
-    throw new AppError(status.NOT_FOUND, 'User not exists!');
+    throw new AppError(status.NOT_FOUND, "User not exists!");
   }
 
   // Check if the OTP matches
   if (user?.otp !== payload.otp || !user.otpExpiry) {
-    throw new AppError(status.BAD_REQUEST, 'Invalid OTP');
+    throw new AppError(status.BAD_REQUEST, "Invalid OTP");
   }
 
   // Check if OTP has expired
   if (Date.now() > new Date(user.otpExpiry).getTime()) {
-    throw new AppError(status.BAD_REQUEST, 'OTP has expired');
+    throw new AppError(status.BAD_REQUEST, "OTP has expired");
   }
 
   const resetToken = jwt.sign(
@@ -378,7 +377,7 @@ const verifyOtpForForgetPassword = async (payload: {
     },
     config.jwt_access_secret!,
     {
-      expiresIn: '1d',
+      expiresIn: "1d",
     }
   );
 
@@ -394,11 +393,11 @@ const resetPasswordIntoDB = async (resetToken: string, newPassword: string) => {
   });
 
   if (!pendingUser) {
-    throw new AppError(status.NOT_FOUND, 'User not exists!');
+    throw new AppError(status.NOT_FOUND, "User not exists!");
   }
 
   if (!isResetPassword) {
-    throw new AppError(status.BAD_REQUEST, 'Invalid reset password token.');
+    throw new AppError(status.BAD_REQUEST, "Invalid reset password token.");
   }
 
   const hashPassword = await bcrypt.hash(
@@ -415,7 +414,7 @@ const resetPasswordIntoDB = async (resetToken: string, newPassword: string) => {
     if (!updatedUser) {
       throw new AppError(
         status.INTERNAL_SERVER_ERROR,
-        'Something went wrong while updating password'
+        "Something went wrong while updating password"
       );
     }
 
@@ -449,7 +448,7 @@ const resetPasswordIntoDB = async (resetToken: string, newPassword: string) => {
     await session.abortTransaction();
     throw new AppError(
       status.INTERNAL_SERVER_ERROR,
-      error?.message || 'Something went wrong updating new password'
+      error?.message || "Something went wrong updating new password"
     );
   } finally {
     await session.endSession();
@@ -458,7 +457,7 @@ const resetPasswordIntoDB = async (resetToken: string, newPassword: string) => {
 
 const refreshTokenFromDB = async (user: IUser, userRefreshToken: string) => {
   if (user?.refreshToken !== userRefreshToken) {
-    throw new AppError(status.FORBIDDEN, 'Forbidden access!');
+    throw new AppError(status.FORBIDDEN, "Forbidden access!");
   }
 
   const accessToken = user.generateAccessToken();
@@ -478,66 +477,7 @@ const refreshTokenFromDB = async (user: IUser, userRefreshToken: string) => {
 };
 
 const getProfileFromDB = async (user: IUser) => {
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-  const stats = await History.aggregate([
-    {
-      $match: {
-        user: user._id,
-      },
-    },
-    {
-      $facet: {
-        overall: [
-          {
-            $group: {
-              _id: null,
-              totalSavedTime: { $sum: '$savedTime' },
-              totalReduction: { $avg: '$reduction' },
-              totalWordProcess: { $sum: '$totalWord' },
-              totalSummaryWord: { $sum: '$summaryWord' },
-              totalSummary: { $sum: 1 },
-            },
-          },
-        ],
-        lastWeek: [
-          {
-            $match: {
-              createdAt: { $gte: oneWeekAgo },
-            },
-          },
-          {
-            $count: 'lastWeekSummary',
-          },
-        ],
-      },
-    },
-    {
-      $project: {
-        totalSavedTime: {
-          $ifNull: [{ $arrayElemAt: ['$overall.totalSavedTime', 0] }, 0],
-        },
-        totalReduction: {
-          $ifNull: [{ $arrayElemAt: ['$overall.totalReduction', 0] }, 0],
-        },
-        totalWordProcess: {
-          $ifNull: [{ $arrayElemAt: ['$overall.totalWordProcess', 0] }, 0],
-        },
-        totalSummaryWord: {
-          $ifNull: [{ $arrayElemAt: ['$overall.totalSummaryWord', 0] }, 0],
-        },
-        totalSummary: {
-          $ifNull: [{ $arrayElemAt: ['$overall.totalSummary', 0] }, 0],
-        },
-        lastWeekSummary: {
-          $ifNull: [{ $arrayElemAt: ['$lastWeek.lastWeekSummary', 0] }, 0],
-        },
-      },
-    },
-  ]);
-
-  return { ...user.toObject(), stats: stats[0] };
+  return user;
 };
 
 export const UserService = {
