@@ -4,7 +4,10 @@ import status from "http-status";
 import { AppError } from "../../utils";
 import Task from "./task.model";
 import { TTaskPayload } from "./task.validation";
-import { Types } from "mongoose";
+import { FilterQuery, Types } from "mongoose";
+import Category from "../Category/category.model";
+import { ITask } from "./task.interface";
+import { ROLE } from "../User/user.constant";
 
 // Create a new task
 const createTaskIntoDB = async (
@@ -16,28 +19,59 @@ const createTaskIntoDB = async (
     throw new AppError(status.CONFLICT, "Task with this title already exists");
   }
 
+  if (payload.categoryId) {
+    const category = await Category.findById(payload.categoryId);
+
+    if (!category) {
+      throw new AppError(status.NOT_FOUND, "Category not found");
+    }
+  }
+
   payload.user = user._id as string;
 
   return await Task.create(payload);
 };
 
 // Get all tasks
-const getAllTasksFromDB = async (query: Record<string, unknown>) => {
-  const taskQuery = new QueryBuilder(Task.find().populate("category"), query)
+const getAllTasksFromDB = async (
+  user: IUser,
+  query: Record<string, unknown>
+) => {
+  const filterQuery: FilterQuery<ITask> = {};
+
+  if (user?.role != ROLE.ADMIN) {
+    filterQuery.user = user._id;
+  }
+
+  const taskQuery = new QueryBuilder(
+    Task.find(filterQuery).populate("category"),
+    query
+  )
     .search(["title", "priority", "description"])
     .filter()
     .sort()
     .fields()
     .paginate();
+
+  const data = await taskQuery.modelQuery;
+  const meta = await taskQuery.countTotal();
+
+  return { data, meta };
 };
 
 // Get single task by ID
-const getSingleTaskFromDB = async (id: string) => {
+const getSingleTaskFromDB = async (user: IUser, id: string) => {
   if (!Types.ObjectId.isValid(id)) {
     throw new AppError(status.BAD_REQUEST, "Invalid task ID");
   }
 
-  const task = await Task.findById(id).populate("category");
+  const filterQuery: FilterQuery<ITask> = {};
+
+  if (user?.role != ROLE.ADMIN) {
+    filterQuery.user = user._id;
+  }
+
+  const task = await Task.findOne(filterQuery).populate("category");
 
   if (!task) {
     throw new AppError(status.NOT_FOUND, "Task not found");
@@ -47,15 +81,25 @@ const getSingleTaskFromDB = async (id: string) => {
 };
 
 // Update task by ID
-const updateTaskIntoDB = async (id: string, payload: Partial<TTaskPayload>) => {
+const updateTaskIntoDB = async (
+  user: IUser,
+  id: string,
+  payload: Partial<TTaskPayload>
+) => {
   if (!Types.ObjectId.isValid(id)) {
     throw new AppError(status.BAD_REQUEST, "Invalid task ID");
   }
 
-  const task = await Task.findByIdAndUpdate(id, payload, {
+  const filterQuery: FilterQuery<ITask> = { _id: id };
+
+  if (user?.role != ROLE.ADMIN) {
+    filterQuery.user = user._id;
+  }
+
+  const task = await Task.findByIdAndUpdate(filterQuery, payload, {
     new: true,
     runValidators: true,
-  }).populate("categoryId");
+  }).populate("category");
 
   if (!task) {
     throw new AppError(status.NOT_FOUND, "Task not found");
@@ -65,18 +109,24 @@ const updateTaskIntoDB = async (id: string, payload: Partial<TTaskPayload>) => {
 };
 
 // Delete task by ID
-const deleteTaskFromDB = async (id: string) => {
+const deleteTaskFromDB = async (user: IUser, id: string) => {
   if (!Types.ObjectId.isValid(id)) {
     throw new AppError(status.BAD_REQUEST, "Invalid task ID");
   }
 
-  const task = await Task.findByIdAndDelete(id);
+  const filterQuery: FilterQuery<ITask> = { _id: id };
+
+  if (user?.role != ROLE.ADMIN) {
+    filterQuery.user = user._id;
+  }
+
+  const task = await Task.findOneAndDelete(filterQuery);
 
   if (!task) {
     throw new AppError(status.NOT_FOUND, "Task not found");
   }
 
-  return task;
+  return null;
 };
 
 export const TaskService = {

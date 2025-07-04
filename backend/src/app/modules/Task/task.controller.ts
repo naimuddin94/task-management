@@ -13,18 +13,23 @@ const createTask = asyncHandler(async (req, res) => {
 
 // Get all tasks
 const getAllTasks = asyncHandler(async (req, res) => {
-  const result = await TaskService.getAllTasksFromDB(req.query);
+  const result = await TaskService.getAllTasksFromDB(req.user, req.query);
 
   res
     .status(status.OK)
     .json(
-      new AppResponse(status.OK, result, "All tasks retrieved successfully")
+      new AppResponse(
+        status.OK,
+        result.data,
+        "All tasks retrieved successfully",
+        result.meta
+      )
     );
 });
 
 // Get single task by ID
 const getSingleTask = asyncHandler(async (req, res) => {
-  const result = await TaskService.getSingleTaskFromDB(req.params.id);
+  const result = await TaskService.getSingleTaskFromDB(req.user, req.params.id);
 
   res
     .status(status.OK)
@@ -33,7 +38,11 @@ const getSingleTask = asyncHandler(async (req, res) => {
 
 // Update task
 const updateTask = asyncHandler(async (req, res) => {
-  const result = await TaskService.updateTaskIntoDB(req.params.id, req.body);
+  const result = await TaskService.updateTaskIntoDB(
+    req.user,
+    req.params.id,
+    req.body
+  );
 
   res
     .status(status.OK)
@@ -42,7 +51,7 @@ const updateTask = asyncHandler(async (req, res) => {
 
 // Delete task
 const deleteTask = asyncHandler(async (req, res) => {
-  const result = await TaskService.deleteTaskFromDB(req.params.id);
+  const result = await TaskService.deleteTaskFromDB(req.user, req.params.id);
 
   res
     .status(status.OK)
