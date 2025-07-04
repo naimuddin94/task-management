@@ -1,27 +1,17 @@
-import { Router } from 'express';
-import { UserRoutes } from '../modules/User/user.route';
-import { SummarizeRoutes } from '../modules/Summarize/summarize.route';
-import { AdminRoutes } from '../modules/Admin/admin.route';
-import { HistoryRoutes } from '../modules/History/history.route';
+import { Router } from "express";
+import { UserRoutes } from "../modules/User/user.route";
+import { CategoryRoutes } from "../modules/Category/category.route";
 
 const router = Router();
 
 const moduleRoutes: { path: string; route: Router }[] = [
   {
-    path: '/auth',
+    path: "/auth",
     route: UserRoutes,
   },
   {
-    path: '/summarize',
-    route: SummarizeRoutes,
-  },
-  {
-    path: '/admin',
-    route: AdminRoutes,
-  },
-  {
-    path: '/history',
-    route: HistoryRoutes,
+    path: "/categories",
+    route: CategoryRoutes,
   },
 ];
 
