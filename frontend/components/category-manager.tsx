@@ -1,12 +1,13 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,18 +18,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Plus, Edit, Trash2, Palette } from "lucide-react"
+} from "@/components/ui/alert-dialog";
+import { Plus, Edit, Trash2, Palette, RefreshCw } from "lucide-react";
+import { categorySchema, TCategoryPayload } from "@/lib/validations/task";
+import {
+  useAddCategoryMutation,
+  useDeleteCategoryMutation,
+  useGetCategoriesQuery,
+  useUpdateCategoryMutation,
+} from "@/redux/features/task/categoryApi";
+import { toast } from "sonner";
+import { TCategory } from "@/types";
 
-interface Category {
-  id: string
-  name: string
-  color: string
-}
 
 interface CategoryManagerProps {
-  categories: Category[]
-  onUpdateCategories: (categories: Category[]) => void
+  categories: TCategory[];
 }
 
 const colorOptions = [
@@ -42,137 +46,207 @@ const colorOptions = [
   "#f97316",
   "#ec4899",
   "#6b7280",
-]
+];
 
-export function CategoryManager({ categories, onUpdateCategories }: CategoryManagerProps) {
-  const [isAdding, setIsAdding] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState({ name: "", color: colorOptions[0] })
+export function CategoryManager({ categories }: CategoryManagerProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<TCategoryPayload>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: {
+      name: "",
+      color: colorOptions[0],
+    },
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formData.name.trim()) return
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const selectedColor = watch("color");
 
+  const [addCategoryFn, { isLoading: addLoading }] = useAddCategoryMutation();
+  const [updateCategory, { isLoading: updateLoading }] =
+    useUpdateCategoryMutation();
+
+  const onSubmit = (data: TCategoryPayload) => {
     if (editingId) {
-      // Update existing category
-      const updatedCategories = categories.map((cat) => (cat.id === editingId ? { ...cat, ...formData } : cat))
-      onUpdateCategories(updatedCategories)
-      setEditingId(null)
+      updateCategory({ categoryId: editingId, data })
+        .unwrap()
+        .then((res) => {
+          if (res?.success) toast.success(res?.message);
+          reset();
+          setEditingId(null);
+          setIsAdding(false);
+        })
+        .catch((err) => {
+          toast.error(err?.data?.message || "Failed to update category.");
+        });
     } else {
-      // Add new category
-      const newCategory: Category = {
-        id: Date.now().toString(),
-        name: formData.name.trim(),
-        color: formData.color,
-      }
-      onUpdateCategories([...categories, newCategory])
-      setIsAdding(false)
+      addCategoryFn(data)
+        .unwrap()
+        .then((res) => {
+          if (res?.success) toast.success(res?.message);
+          reset();
+          setIsAdding(false);
+        })
+        .catch((err) => {
+          toast.error(err?.data?.message || "Failed to add category.");
+        });
     }
+  };
 
-    setFormData({ name: "", color: colorOptions[0] })
-  }
+  const handleEdit = (category: TCategory) => {
+    setEditingId(category._id);
+    setValue("name", category.name);
+    setValue("color", category.color);
+    setIsAdding(true);
+  };
 
-  const handleEdit = (category: Category) => {
-    setFormData({ name: category.name, color: category.color })
-    setEditingId(category.id)
-    setIsAdding(true)
-  }
+  const [deleteCategory, { isLoading: deleteLoading }] =
+    useDeleteCategoryMutation();
 
   const handleDelete = (categoryId: string) => {
-    const updatedCategories = categories.filter((cat) => cat.id !== categoryId)
-    onUpdateCategories(updatedCategories)
-  }
+    deleteCategory(categoryId)
+      .unwrap()
+      .then((res) => {
+        if (res?.success) {
+          toast.success(res?.message);
+        }
+      })
+      .catch((err) => {
+        toast.error(err?.data?.message || "Something went wrong!");
+      });
+  };
 
   const handleCancel = () => {
-    setIsAdding(false)
-    setEditingId(null)
-    setFormData({ name: "", color: colorOptions[0] })
-  }
+    reset();
+    setEditingId(null);
+    setIsAdding(false);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Add/Edit Form */}
       {isAdding && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{editingId ? "Edit Category" : "Add New Category"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="categoryName">Category Name</Label>
-                <Input
-                  id="categoryName"
-                  value={formData.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter category name"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Color</Label>
-                <div className="flex flex-wrap gap-2">
-                  {colorOptions.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`w-8 h-8 rounded-full border-2 ${
-                        formData.color === color ? "border-gray-900" : "border-gray-300"
-                      }`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => setFormData((prev) => ({ ...prev, color }))}
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {editingId ? "Edit Category" : "Add New Category"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Category Name</Label>
+                    <Input
+                      id="name"
+                      {...register("name")}
+                      className={
+                        errors.name
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }
                     />
-                  ))}
-                </div>
-              </div>
+                    {errors.name && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {errors.name.message}
+                      </p>
+                    )}
+                  </div>
 
-              <div className="flex gap-2">
-                <Button type="submit">{editingId ? "Update Category" : "Add Category"}</Button>
-                <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                  <div className="space-y-2">
+                    <Label>Color</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {colorOptions.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
+                            selectedColor === color
+                              ? "border-black scale-110"
+                              : "border-gray-300"
+                          }`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => setValue("color", color)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button type="submit">
+                      {editingId ? "Update Category" : "Add Category"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCancel}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </AnimatePresence>
       )}
 
       {/* Categories List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">Categories ({categories.length})</h3>
+          <h3 className="text-lg font-medium">
+            Categories ({categories?.length})
+          </h3>
           {!isAdding && (
             <Button onClick={() => setIsAdding(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Category
+              <Plus className="h-4 w-4 mr-2" /> Add Category
             </Button>
           )}
         </div>
 
-        {categories.length === 0 ? (
+        {categories?.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-8">
               <Palette className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No categories yet</h3>
-              <p className="text-gray-500 text-center mb-4">Create your first category to organize your tasks.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No categories yet
+              </h3>
+              <p className="text-gray-500 text-center mb-4">
+                Create your first category to organize your tasks.
+              </p>
               <Button onClick={() => setIsAdding(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Category
+                <Plus className="h-4 w-4 mr-2" /> Add Category
               </Button>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-3">
-            {categories.map((category) => (
-              <Card key={category.id}>
+            {categories?.map((category) => (
+              <Card key={category._id}>
                 <CardContent className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: category.color }} />
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: category.color }}
+                    />
                     <span className="font-medium">{category.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(category)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(category)}
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
@@ -185,13 +259,16 @@ export function CategoryManager({ categories, onUpdateCategories }: CategoryMana
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Category</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete the "{category.name}" category? This action cannot be
-                            undone.
+                            Are you sure you want to delete "{category.name}"?
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(category.id)}>Delete</AlertDialogAction>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(category._id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -203,5 +280,5 @@ export function CategoryManager({ categories, onUpdateCategories }: CategoryMana
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -34,7 +34,7 @@ const createSchema = z.object({
       })
       .default("Medium"),
 
-    categoryId: z
+    category: z
       .string()
       .regex(/^[0-9a-fA-F]{24}$/, "Invalid category ID")
       .nullable()

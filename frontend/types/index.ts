@@ -30,6 +30,7 @@ export type TProfile = {
 };
 
 export type TCategory = {
+  _id: string;
   name: string;
   color: string;
 };
@@ -39,6 +40,7 @@ export const PRIORITIES = ["Low", "Medium", "High"] as const;
 export type TPriority = (typeof PRIORITIES)[number];
 
 export type TTask = {
+  _id: string;
   user: string;
   title: string;
   description: string | null;
@@ -48,4 +50,11 @@ export type TTask = {
   category: TCategory | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type TSearchParams = {
+  searchTerm: string;
+  page: string;
+  limit: string;
+  [val: string]: string;
 };

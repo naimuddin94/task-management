@@ -1,9 +1,10 @@
+import { TCategoryPayload } from "@/lib/validations/task";
 import { baseApi } from "@/redux/api/baseApi";
-import { TCategory, TResponse, TTask } from "@/types";
+import { TCategory, TResponse } from "@/types";
 
 const categoryApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    addCategory: builder.mutation<TResponse<TCategory>, any>({
+    addCategory: builder.mutation<TResponse<TCategory>, TCategoryPayload, any>({
       query: (data) => ({
         url: "/categories",
         method: "POST",
@@ -24,15 +25,18 @@ const categoryApi = baseApi.injectEndpoints({
       }),
       providesTags: ["categories"],
     }),
-    updateCategory: builder.mutation<TResponse<TCategory>, any>({
-      query: (data) => ({
-        url: "/categories",
+    updateCategory: builder.mutation<
+      TResponse<TCategory>,
+      { categoryId: string; data: Partial<TCategoryPayload> }
+    >({
+      query: ({ categoryId, data }) => ({
+        url: `/categories/${categoryId}`,
         method: "PUT",
         body: data,
       }),
       invalidatesTags: ["categories"],
     }),
-    deleteCategory: builder.mutation<TResponse<TCategory>, any>({
+    deleteCategory: builder.mutation<TResponse<TCategory>, string>({
       query: (categoryId) => ({
         url: `/categories/${categoryId}`,
         method: "DELETE",

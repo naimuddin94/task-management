@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import {
   AlertCircle,
   LogOut,
   Settings,
+  RefreshCw,
 } from "lucide-react";
 import { TaskForm } from "@/components/task-form";
 import { TaskDetailModal } from "@/components/task-detail-modal";
@@ -37,167 +39,33 @@ import { useLogoutMutation } from "@/redux/features/auth/authApi";
 import { removeUser } from "@/redux/features/auth/authSlice";
 import { toast } from "sonner";
 import { useDispatch } from "react-redux";
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  dueDate?: string;
-  priority: "low" | "medium" | "high";
-  category: string;
-  completed: boolean;
-  createdAt: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-}
-
-const mockTasks: Task[] = [
-  {
-    id: "1",
-    title: "Complete project proposal",
-    description: "Write and submit the Q4 project proposal",
-    dueDate: "2024-01-15",
-    priority: "high",
-    category: "work",
-    completed: false,
-    createdAt: "2024-01-01",
-  },
-  {
-    id: "2",
-    title: "Buy groceries",
-    description: "Get milk, bread, and vegetables",
-    dueDate: "2024-01-10",
-    priority: "medium",
-    category: "personal",
-    completed: true,
-    createdAt: "2024-01-02",
-  },
-  {
-    id: "3",
-    title: "Schedule dentist appointment",
-    description: "Call dentist office for routine checkup",
-    priority: "low",
-    category: "health",
-    completed: false,
-    createdAt: "2024-01-03",
-  },
-];
-
-const mockCategories: Category[] = [
-  { id: "1", name: "work", color: "#3b82f6" },
-  { id: "2", name: "personal", color: "#10b981" },
-  { id: "3", name: "health", color: "#f59e0b" },
-];
+import { useGetCategoriesQuery } from "@/redux/features/task/categoryApi";
+import { TTask } from "@/types";
+import { TTaskPayload } from "@/lib/validations/task";
+import { useGetAllTasksQuery } from "@/redux/features/task/taskApi";
+import { getPriorityColor } from "@/constants";
 
 export default function DashboardPage() {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [sortBy, setSortBy] = useState("createdAt");
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<TTask | null>(null);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    // Check authentication
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [router]);
+  const { data, isLoading: categoryLoading } = useGetCategoriesQuery(null);
+  const { data: tasksData, isLoading: taskLoading } = useGetAllTasksQuery({
+    searchTerm,
+  });
 
-  const toggleTaskComplete = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    );
-  };
+  const toggleTaskComplete = (taskId: string) => {};
 
-  const addTask = (taskData: Omit<Task, "id" | "createdAt">) => {
-    const newTask: Task = {
-      ...taskData,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    };
-    setTasks((prev) => [newTask, ...prev]);
-    setIsAddTaskOpen(false);
-  };
-
-  const updateTask = (taskId: string, taskData: Partial<Task>) => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, ...taskData } : task))
-    );
-    setSelectedTask(null);
-  };
-
-  const deleteTask = (taskId: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== taskId));
-    setSelectedTask(null);
-  };
-
-  const filteredAndSortedTasks = useMemo(() => {
-    const filtered = tasks.filter((task) => {
-      const matchesSearch =
-        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "completed" && task.completed) ||
-        (statusFilter === "pending" && !task.completed);
-      const matchesCategory =
-        categoryFilter === "all" || task.category === categoryFilter;
-      const matchesPriority =
-        priorityFilter === "all" || task.priority === priorityFilter;
-
-      return (
-        matchesSearch && matchesStatus && matchesCategory && matchesPriority
-      );
-    });
-
-    return filtered.sort((a, b) => {
-      if (sortBy === "dueDate") {
-        if (!a.dueDate && !b.dueDate) return 0;
-        if (!a.dueDate) return 1;
-        if (!b.dueDate) return -1;
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }, [
-    tasks,
-    searchQuery,
-    statusFilter,
-    categoryFilter,
-    priorityFilter,
-    sortBy,
-  ]);
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800";
-      case "low":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getCategoryColor = (categoryName: string) => {
-    const category = categories.find((c) => c.name === categoryName);
-    return category?.color || "#6b7280";
+  const onSubmit = (data: TTaskPayload) => {
+    console.log(data);
   };
 
   const [logoutFn] = useLogoutMutation();
@@ -216,6 +84,26 @@ export default function DashboardPage() {
         toast.error(err?.data?.message || "Something went wrong!");
       });
   };
+
+  if (categoryLoading || taskLoading) {
+    return (
+      <motion.div
+        key="loading"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="text-center py-16"
+      >
+        <RefreshCw className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-6" />
+        <p className="text-gray-600 text-lg font-medium">
+          Categories loading...
+        </p>
+      </motion.div>
+    );
+  }
+
+  const categories = data?.data;
+  const tasks = tasksData?.data;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -250,8 +138,8 @@ export default function DashboardPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search tasks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -267,8 +155,7 @@ export default function DashboardPage() {
                   <DialogTitle>Add New Task</DialogTitle>
                 </DialogHeader>
                 <TaskForm
-                  categories={categories}
-                  onSubmit={addTask}
+                  categories={categories || []}
                   onCancel={() => setIsAddTaskOpen(false)}
                 />
               </DialogContent>
@@ -294,8 +181,8 @@ export default function DashboardPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.name}>
+                {categories?.map((category) => (
+                  <SelectItem key={category._id} value={category.name}>
                     {category.name}
                   </SelectItem>
                 ))}
@@ -328,7 +215,7 @@ export default function DashboardPage() {
 
         {/* Task List */}
         <div className="space-y-4">
-          {filteredAndSortedTasks.length === 0 ? (
+          {categories?.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <AlertCircle className="h-12 w-12 text-gray-400 mb-4" />
@@ -336,7 +223,7 @@ export default function DashboardPage() {
                   No tasks found
                 </h3>
                 <p className="text-gray-500 text-center">
-                  {searchQuery ||
+                  {searchTerm ||
                   statusFilter !== "all" ||
                   categoryFilter !== "all" ||
                   priorityFilter !== "all"
@@ -346,9 +233,9 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            filteredAndSortedTasks.map((task) => (
+            tasks?.map((task) => (
               <Card
-                key={task.id}
+                key={task._id}
                 className={`cursor-pointer transition-all hover:shadow-md ${
                   task.completed ? "opacity-75" : ""
                 }`}
@@ -358,7 +245,7 @@ export default function DashboardPage() {
                   <div className="flex items-start gap-4">
                     <Checkbox
                       checked={task.completed}
-                      onCheckedChange={() => toggleTaskComplete(task.id)}
+                      onCheckedChange={() => toggleTaskComplete(task._id)}
                       onClick={(e) => e.stopPropagation()}
                       className="mt-1"
                     />
@@ -397,12 +284,12 @@ export default function DashboardPage() {
                             <Badge
                               variant="outline"
                               style={{
-                                borderColor: getCategoryColor(task.category),
-                                color: getCategoryColor(task.category),
+                                borderColor: task?.category?.color,
+                                color: task?.category?.color,
                               }}
                             >
                               <Tag className="h-3 w-3 mr-1" />
-                              {task.category}
+                              {task?.category?.name || "Unknow"}
                             </Badge>
                           </div>
                           {task.dueDate && (
@@ -425,10 +312,8 @@ export default function DashboardPage() {
       {/* Task Detail Modal */}
       {selectedTask && (
         <TaskDetailModal
+          categories={categories || []}
           task={selectedTask}
-          categories={categories}
-          onUpdate={updateTask}
-          onDelete={deleteTask}
           onClose={() => setSelectedTask(null)}
         />
       )}
@@ -442,10 +327,7 @@ export default function DashboardPage() {
           <DialogHeader>
             <DialogTitle>Manage Categories</DialogTitle>
           </DialogHeader>
-          <CategoryManager
-            categories={categories}
-            onUpdateCategories={setCategories}
-          />
+          <CategoryManager categories={categories || []} />
         </DialogContent>
       </Dialog>
     </div>

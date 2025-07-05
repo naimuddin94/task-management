@@ -19,8 +19,8 @@ const createTaskIntoDB = async (
     throw new AppError(status.CONFLICT, "Task with this title already exists");
   }
 
-  if (payload.categoryId) {
-    const category = await Category.findById(payload.categoryId);
+  if (payload.category) {
+    const category = await Category.findById(payload.category);
 
     if (!category) {
       throw new AppError(status.NOT_FOUND, "Category not found");
