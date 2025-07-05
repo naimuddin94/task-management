@@ -4,7 +4,7 @@ import type React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Router } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,22 +26,34 @@ import { Calendar } from "@/components/ui/calendar";
 
 import { taskSchema, TTaskPayload } from "@/lib/validations/task";
 import { TCategory, TPriority } from "@/types";
-import { useAddTaskMutation } from "@/redux/features/task/taskApi";
+import {
+  useAddTaskMutation,
+  useUpdateTaskMutation,
+} from "@/redux/features/task/taskApi";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface TaskFormProps {
   categories: TCategory[];
   initialData?: {
+    _id: string;
     title: string;
     description: string;
     dueDate?: string;
     priority: TPriority;
-    category: string; // category _id
+    category: string;
   };
   onCancel: () => void;
+  onCloseDetailModal?: () => void;
 }
 
-export function TaskForm({ categories, initialData, onCancel }: TaskFormProps) {
+export function TaskForm({
+  categories,
+  initialData,
+  onCancel,
+  onCloseDetailModal,
+}: TaskFormProps) {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -64,20 +76,37 @@ export function TaskForm({ categories, initialData, onCancel }: TaskFormProps) {
   const selectedDate = dueDateValue ? new Date(dueDateValue) : undefined;
 
   const [addTaskFn] = useAddTaskMutation();
+  const [updateTask] = useUpdateTaskMutation();
 
   const onSubmit = (data: TTaskPayload) => {
-    addTaskFn(data)
-      .unwrap()
-      .then((res) => {
-        if (res?.success) {
-          toast.success(res?.message);
-          reset();
-          onCancel();
-        }
-      })
-      .catch((err) => {
-        toast.error(err?.data?.message || "Something went wrong!");
-      });
+    if (initialData?._id) {
+      updateTask({ taskId: initialData?._id, data })
+        .unwrap()
+        .then((res) => {
+          if (res?.success) {
+            toast.success(res?.message);
+            reset();
+            onCancel();
+            onCloseDetailModal && onCloseDetailModal();
+          }
+        })
+        .catch((err) => {
+          toast.error(err?.data?.message || "Something went wrong!");
+        });
+    } else {
+      addTaskFn(data)
+        .unwrap()
+        .then((res) => {
+          if (res?.success) {
+            toast.success(res?.message);
+            reset();
+            onCancel();
+          }
+        })
+        .catch((err) => {
+          toast.error(err?.data?.message || "Something went wrong!");
+        });
+    }
   };
 
   const handleDateSelect = (date: Date | undefined) => {

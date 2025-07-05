@@ -44,10 +44,6 @@ export function TaskDetailModal({
 }: TaskDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
 
-  const handleUpdate = (data: Partial<TTask>) => {
-    setIsEditing(false);
-  };
-
   const [deleteTaskFn] = useDeleteTaskMutation();
 
   const handleDelete = (taskId: string) => {
@@ -116,6 +112,7 @@ export function TaskDetailModal({
           <TaskForm
             categories={categories}
             initialData={{
+              _id: task?._id,
               title: task.title,
               description: task?.description || "",
               dueDate: task?.dueDate || "",
@@ -123,6 +120,7 @@ export function TaskDetailModal({
               category: task?.category?._id || "",
             }}
             onCancel={() => setIsEditing(false)}
+            onCloseDetailModal={onClose}
           />
         ) : (
           <div className="space-y-6">

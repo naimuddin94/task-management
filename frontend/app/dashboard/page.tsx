@@ -42,7 +42,10 @@ import { useDispatch } from "react-redux";
 import { useGetCategoriesQuery } from "@/redux/features/task/categoryApi";
 import { TTask } from "@/types";
 import { TTaskPayload } from "@/lib/validations/task";
-import { useGetAllTasksQuery } from "@/redux/features/task/taskApi";
+import {
+  useGetAllTasksQuery,
+  useUpdateTaskMutation,
+} from "@/redux/features/task/taskApi";
 import { getPriorityColor } from "@/constants";
 
 export default function DashboardPage() {
@@ -62,10 +65,19 @@ export default function DashboardPage() {
     searchTerm,
   });
 
-  const toggleTaskComplete = (taskId: string) => {};
+  const [updateTask] = useUpdateTaskMutation();
 
-  const onSubmit = (data: TTaskPayload) => {
-    console.log(data);
+  const toggleTaskComplete = (task: TTask) => {
+    updateTask({ taskId: task?._id, data: {completed: !task.completed} })
+      .unwrap()
+      .then((res) => {
+        if (res?.success) {
+          toast.success(res?.message);
+        }
+      })
+      .catch((err) => {
+        toast.error(err?.data?.message || "Something went wrong!");
+      });
   };
 
   const [logoutFn] = useLogoutMutation();
@@ -195,9 +207,9 @@ export default function DashboardPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
               </SelectContent>
             </Select>
 
@@ -245,7 +257,7 @@ export default function DashboardPage() {
                   <div className="flex items-start gap-4">
                     <Checkbox
                       checked={task.completed}
-                      onCheckedChange={() => toggleTaskComplete(task._id)}
+                      onCheckedChange={() => toggleTaskComplete(task)}
                       onClick={(e) => e.stopPropagation()}
                       className="mt-1"
                     />
@@ -277,7 +289,20 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-2">
                             <Badge
                               variant="secondary"
-                              className={getPriorityColor(task.priority)}
+                              style={{
+                                backgroundColor:
+                                  task.priority === "High"
+                                    ? "#fee2e2"
+                                    : task.priority === "Medium"
+                                    ? "#fef9c3"
+                                    : "#dcfce7",
+                                color:
+                                  task.priority === "High"
+                                    ? "#991b1b"
+                                    : task.priority === "Medium"
+                                    ? "#92400e"
+                                    : "#166534",
+                              }}
                             >
                               {task.priority}
                             </Badge>
@@ -289,7 +314,7 @@ export default function DashboardPage() {
                               }}
                             >
                               <Tag className="h-3 w-3 mr-1" />
-                              {task?.category?.name || "Unknow"}
+                              {task?.category?.name || "Unknown"}
                             </Badge>
                           </div>
                           {task.dueDate && (

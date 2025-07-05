@@ -1,4 +1,6 @@
-export const getPriorityColor = (priority: string) => {
+import { TPriority } from "@/types";
+
+export const getPriorityColor = (priority: TPriority) => {
   switch (priority) {
     case "High":
       return "bg-red-100 text-red-800";

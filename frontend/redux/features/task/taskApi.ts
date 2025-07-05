@@ -36,7 +36,7 @@ const taskApi = baseApi.injectEndpoints({
     }),
     updateTask: builder.mutation<
       TResponse<TTask>,
-      { taskId: string; data: Partial<TTask> }
+      { taskId: string; data: Partial<TTaskPayload> }
     >({
       query: ({ taskId, data }) => ({
         url: `/tasks/${taskId}`,
