@@ -45,6 +45,7 @@ interface TaskFormProps {
   };
   onCancel: () => void;
   onCloseDetailModal?: () => void;
+  query: any;
 }
 
 export function TaskForm({
@@ -52,6 +53,7 @@ export function TaskForm({
   initialData,
   onCancel,
   onCloseDetailModal,
+  query,
 }: TaskFormProps) {
   const router = useRouter();
   const {
@@ -80,7 +82,7 @@ export function TaskForm({
 
   const onSubmit = (data: TTaskPayload) => {
     if (initialData?._id) {
-      updateTask({ taskId: initialData?._id, data })
+      updateTask({ taskId: initialData?._id, data, query })
         .unwrap()
         .then((res) => {
           if (res?.success) {

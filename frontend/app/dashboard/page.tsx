@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,11 @@ export default function DashboardPage() {
   const [updateTask] = useUpdateTaskMutation();
 
   const toggleTaskComplete = (task: TTask) => {
-    updateTask({ taskId: task?._id, data: { completed: !task.completed } })
+    updateTask({
+      taskId: task?._id,
+      data: { completed: !task.completed },
+      query: filterQuery,
+    })
       .unwrap()
       .then((res) => {
         if (res?.success) {
@@ -95,13 +99,12 @@ export default function DashboardPage() {
     logoutFn({})
       .unwrap()
       .then((res) => {
-        if (res?.success) {
-          dispatch(removeUser());
-          toast.success(res?.message);
-          router.push("/");
-        }
+        dispatch(removeUser());
+        toast.success(res?.message);
+        router.push("/login");
       })
       .catch((err) => {
+        router.push("/login");
         toast.error(err?.data?.message || "Something went wrong!");
       });
   };
@@ -113,7 +116,7 @@ export default function DashboardPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="text-center py-16"
+        className="text-center py-16 min-h-screen"
       >
         <RefreshCw className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-6" />
         <p className="text-gray-600 text-lg font-medium">
@@ -176,6 +179,7 @@ export default function DashboardPage() {
                   <DialogTitle>Add New Task</DialogTitle>
                 </DialogHeader>
                 <TaskForm
+                  query={filterQuery}
                   categories={categories || []}
                   onCancel={() => setIsAddTaskOpen(false)}
                 />
@@ -346,6 +350,7 @@ export default function DashboardPage() {
       {/* Task Detail Modal */}
       {selectedTask && (
         <TaskDetailModal
+          query={filterQuery}
           categories={categories || []}
           task={selectedTask}
           onClose={() => setSelectedTask(null)}

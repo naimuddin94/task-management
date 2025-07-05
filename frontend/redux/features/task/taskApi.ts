@@ -1,6 +1,6 @@
 import { TTaskPayload } from "@/lib/validations/task";
 import { baseApi } from "@/redux/api/baseApi";
-import { TResponse, TSearchParams, TTask } from "@/types";
+import { TResponse, TTask } from "@/types";
 
 const taskApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -36,21 +36,49 @@ const taskApi = baseApi.injectEndpoints({
     }),
     updateTask: builder.mutation<
       TResponse<TTask>,
-      { taskId: string; data: Partial<TTaskPayload> }
+      { taskId: string; data: Partial<TTaskPayload>; query: any }
     >({
-      query: ({ taskId, data }) => ({
+      query: ({ taskId, data, query }) => ({
         url: `/tasks/${taskId}`,
         method: "PUT",
         body: data,
       }),
-      invalidatesTags: ["tasks"],
+      async onQueryStarted(
+        { taskId, data, query },
+        { dispatch, queryFulfilled }
+      ) {
+        const patchResult = dispatch(
+          taskApi.util.updateQueryData("getAllTasks", query, (draft) => {
+            const task = draft.data.find((item) => item._id === taskId);
+            if (task) {
+              Object.assign(task, data);
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
-    deleteTask: builder.mutation<TResponse<TTask>, string>({
-      query: (taskId) => ({
+    deleteTask: builder.mutation<TResponse<TTask>, any>({
+      query: ({ taskId, query }) => ({
         url: `/tasks/${taskId}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["tasks"],
+      async onQueryStarted({ taskId, query }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          taskApi.util.updateQueryData("getAllTasks", query, (draft) => {
+            draft.data = draft.data.filter((item) => item._id !== taskId);
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
   }),
 });

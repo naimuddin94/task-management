@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Mail, RefreshCw, Sparkles, CheckCircle } from "lucide-react";
+import { Mail, RefreshCw, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -217,19 +217,6 @@ export default function VerifyOTPPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        {/* Logo */}
-        <motion.div
-          variants={fadeInUp}
-          initial="initial"
-          animate="animate"
-          className="text-center mb-8"
-        >
-          <Link href="/" className="inline-flex items-center space-x-2">
-            <Sparkles className="h-10 w-10 text-blue-600" />
-            <span className="text-3xl font-bold text-gray-900">SmartBrief</span>
-          </Link>
-        </motion.div>
-
         <motion.div
           variants={fadeInUp}
           initial="initial"

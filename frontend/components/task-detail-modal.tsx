@@ -35,19 +35,21 @@ interface TaskDetailModalProps {
   task: TTask;
   categories: TCategory[];
   onClose: () => void;
+  query: any;
 }
 
 export function TaskDetailModal({
   task,
   categories,
   onClose,
+  query,
 }: TaskDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   const [deleteTaskFn] = useDeleteTaskMutation();
 
   const handleDelete = (taskId: string) => {
-    deleteTaskFn(taskId)
+    deleteTaskFn({ taskId, query })
       .unwrap()
       .then((res) => {
         if (res?.success) {
@@ -63,7 +65,11 @@ export function TaskDetailModal({
   const [updateTask] = useUpdateTaskMutation();
 
   const toggleTaskComplete = (task: TTask) => {
-    updateTask({ taskId: task?._id, data: { completed: !task.completed } })
+    updateTask({
+      taskId: task?._id,
+      data: { completed: !task.completed },
+      query,
+    })
       .unwrap()
       .then((res) => {
         if (res?.success) {
@@ -126,6 +132,7 @@ export function TaskDetailModal({
 
         {isEditing ? (
           <TaskForm
+            query={query}
             categories={categories}
             initialData={{
               _id: task?._id,

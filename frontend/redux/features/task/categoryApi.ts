@@ -34,14 +34,39 @@ const categoryApi = baseApi.injectEndpoints({
         method: "PUT",
         body: data,
       }),
-      invalidatesTags: ["categories"],
+      async onQueryStarted({ categoryId, data }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          categoryApi.util.updateQueryData("getCategories", null, (draft) => {
+            const category = draft.data.find((item) => item._id === categoryId);
+            if (category) {
+              Object.assign(category, data);
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     deleteCategory: builder.mutation<TResponse<TCategory>, string>({
       query: (categoryId) => ({
         url: `/categories/${categoryId}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["categories"],
+      async onQueryStarted(categoryId, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          categoryApi.util.updateQueryData("getCategories", null, (draft) => {
+            draft.data = draft.data.filter((item) => item._id !== categoryId);
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
   }),
 });

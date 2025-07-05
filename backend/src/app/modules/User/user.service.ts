@@ -68,9 +68,6 @@ const verifyOtpAndSaveUserIntoDB = async (payload: TOtpPayload) => {
     );
   }
 
-  const accessToken = pendingUser.generateAccessToken();
-  const refreshToken = pendingUser.generateRefreshToken();
-
   const { fullName, email, password } = pendingUser;
 
   const session = await mongoose.startSession();
@@ -84,6 +81,11 @@ const verifyOtpAndSaveUserIntoDB = async (payload: TOtpPayload) => {
     await PendingUser.findOneAndDelete({ email }, { session });
 
     await session.commitTransaction();
+
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    await User.findByIdAndUpdate(user._id).session(session);
 
     return {
       accessToken,

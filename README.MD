@@ -1,4 +1,4 @@
-# EngineersIQ
+# Task Management
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ The Task Management App is a simple yet powerful tool designed to help users eff
 
 ## Technologies Used
 
-- Frontend: Next.js, ShadCN, React Hook Form, Zod,
+- Frontend: Next.js, Redux, ShadCN, React Hook Form, Zod,
 - Backend: Express, Mongoose, Zod
 - Database: MongoDB
 - Authentication: JWT (JSON Web Tokens)

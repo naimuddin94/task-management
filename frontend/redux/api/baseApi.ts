@@ -10,6 +10,8 @@ import {
 import { removeUser, setUser } from "../features/auth/authSlice";
 import { RootState } from "../store";
 
+// const BASE_URL = "http://16.16.190.238:5000/api"
+
 const BASE_URL = "http://localhost:5000/api";
 
 const baseQuery = fetchBaseQuery({
