@@ -60,6 +60,22 @@ export function TaskDetailModal({
       });
   };
 
+  const [updateTask] = useUpdateTaskMutation();
+
+  const toggleTaskComplete = (task: TTask) => {
+    updateTask({ taskId: task?._id, data: { completed: !task.completed } })
+      .unwrap()
+      .then((res) => {
+        if (res?.success) {
+          toast.success(res?.message);
+          onClose();
+        }
+      })
+      .catch((err) => {
+        toast.error(err?.data?.message || "Something went wrong!");
+      });
+  };
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
@@ -218,7 +234,10 @@ export function TaskDetailModal({
                   {task.completed ? "Completed" : "Pending"}
                 </Badge>
               </div>
-              <Button variant="outline" onClick={() => {}}>
+              <Button
+                variant="outline"
+                onClick={() => toggleTaskComplete(task)}
+              >
                 Mark as {task.completed ? "Pending" : "Complete"}
               </Button>
             </div>

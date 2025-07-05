@@ -46,29 +46,38 @@ import {
   useGetAllTasksQuery,
   useUpdateTaskMutation,
 } from "@/redux/features/task/taskApi";
-import { getPriorityColor } from "@/constants";
 
 export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("createdAt");
+  const [sort, setSort] = useState("createdAt");
   const [selectedTask, setSelectedTask] = useState<TTask | null>(null);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch();
 
+  const filterQuery = {
+    ...(searchTerm && { searchTerm }),
+    ...(sort && { sort }),
+    ...(statusFilter !== "all" && {
+      completed: statusFilter === "completed" ? true : false,
+    }),
+    ...(priorityFilter !== "all" && { priority: priorityFilter }),
+    ...(categoryFilter !== "all" && { category: categoryFilter }),
+  };
+
+  const { data: tasksData, isLoading: taskLoading } =
+    useGetAllTasksQuery(filterQuery);
+
   const { data, isLoading: categoryLoading } = useGetCategoriesQuery(null);
-  const { data: tasksData, isLoading: taskLoading } = useGetAllTasksQuery({
-    searchTerm,
-  });
 
   const [updateTask] = useUpdateTaskMutation();
 
   const toggleTaskComplete = (task: TTask) => {
-    updateTask({ taskId: task?._id, data: {completed: !task.completed} })
+    updateTask({ taskId: task?._id, data: { completed: !task.completed } })
       .unwrap()
       .then((res) => {
         if (res?.success) {
@@ -194,7 +203,7 @@ export default function DashboardPage() {
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 {categories?.map((category) => (
-                  <SelectItem key={category._id} value={category.name}>
+                  <SelectItem key={category._id} value={category._id}>
                     {category.name}
                   </SelectItem>
                 ))}
@@ -213,7 +222,7 @@ export default function DashboardPage() {
               </SelectContent>
             </Select>
 
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={sort} onValueChange={setSort}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
