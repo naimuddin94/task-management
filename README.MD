@@ -17,6 +17,7 @@ The Task Management App is a simple yet powerful tool designed to help users eff
 
 ## Features
 
+- **Manual Cache Update**: Using redux toolkit manual cache handle from proxy.
 - **Task Management**: Add, edit, and delete tasks & Organize tasks by categories and priorities.
 - **User Authentication**: Secure registration and login with JWT-based authentication.
 - **Search & Filter**: Advanced search functionality with debouncing for optimal performance.
